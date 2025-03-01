@@ -11,24 +11,24 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin: 0; /* Reset body margin */
+            margin: 0;
         }
 
         #container {
-            width: 95%; /* Adjust width for smaller screens */
-            max-width: 600px; /*Maximum width */
+            width: 95%;
+            max-width: 600px;
             border: 1px solid #ccc;
-            padding: 10px; /* Reduced padding for smaller screens */
-            margin-top: 10px; /* Reduced margin for smaller screens */
-            box-sizing: border-box; /* Include padding and border in element's total width and height */
+            padding: 10px;
+            margin-top: 10px;
+            box-sizing: border-box;
         }
 
         #image-container {
             position: relative;
             overflow: visible;
-            margin-bottom: 10px; /* Reduced margin for smaller screens */
-            width: 100%; /* Take up full width of container */
-            height: auto; /* Adjust height dynamically based on content */
+            margin-bottom: 10px;
+            width: 100%;
+            height: auto;
         }
 
         #uploaded-image {
@@ -43,29 +43,29 @@
             left: 50%;
             transform: translate(-50%, -50%);
             color: white;
-            font-size: 16px;  /* Reduced initial font size */
+            font-size: 16px;
             font-weight: bold;
             user-select: none;
             cursor: move;
             display: none;
-            white-space: nowrap;  /* Prevent text from wrapping */
+            white-space: nowrap;
         }
 
         .controls {
-            margin-top: 5px; /* Reduced margin for smaller screens */
-            display: flex;  /*Use flex to better handle button layout*/
-            flex-wrap: wrap; /*Allow buttons to wrap on smaller screens*/
+            margin-top: 5px;
+            display: flex;
+            flex-wrap: wrap;
             justify-content: center;
         }
 
         .controls button {
-            margin: 5px;  /* Reduced margin for smaller screens */
+            margin: 5px;
             padding: 5px 10px;
             font-size: 14px;
         }
 
         #crop-options {
-            margin-top: 5px; /* Reduced margin for smaller screens */
+            margin-top: 5px;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
@@ -78,15 +78,35 @@
         }
 
         input[type="file"],
-        input[type="text"],
-        input[type="color"] {
+        input[type="text"] {
             width: 100%;
             margin-bottom: 5px;
             box-sizing: border-box;
         }
 
         h1 {
-            font-size: 1.5em;  /*Responsive Heading */
+            font-size: 1.5em;
+        }
+
+        /* Color Picker Styles */
+        .color-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 5px;
+        }
+
+        .color-button {
+            width: 25px;
+            height: 25px;
+            border: 1px solid #ccc;
+            margin: 3px;
+            cursor: pointer;
+        }
+
+        /* Hide the default color picker on smaller screens */
+        input[type="color"] {
+            display: none;
         }
 
         /* Media queries for smaller screens */
@@ -104,7 +124,34 @@
             #text-overlay {
                 font-size: 14px;
             }
+
+            /* Show color buttons on smaller screens */
+            .color-options {
+                display: flex;
+            }
+
+            /*Hide Input color*/
+            input[type="color"] {
+               display: none;
+            }
+
         }
+
+        /* Media queries for larger screens */
+        @media (min-width: 601px) {
+            /* Show default color input on larger screens */
+            input[type="color"] {
+                display: inline-block;
+                width: auto;
+                margin-right: 10px;
+            }
+
+            /* Hide color buttons on larger screens */
+            .color-options {
+                display: none;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -137,13 +184,24 @@
         </div>
 
         <div class="controls">
+            <!-- Default Color Picker -->
             <input type="color" id="font-color-picker" value="#ffffff">
+
+            <!-- Color Options for Mobile -->
+            <div class="color-options">
+                <button class="color-button" style="background-color: white;" data-color="white" onclick="setColor(this)"></button>
+                <button class="color-button" style="background-color: black;" data-color="black" onclick="setColor(this)"></button>
+                <button class="color-button" style="background-color: red;" data-color="red" onclick="setColor(this)"></button>
+                <button class="color-button" style="background-color: blue;" data-color="blue" onclick="setColor(this)"></button>
+                <button class="color-button" style="background-color: green;" data-color="green" onclick="setColor(this)"></button>
+                <button class="color-button" style="background-color: yellow;" data-color="yellow" onclick="setColor(this)"></button>
+            </div>
             <button onclick="setFontColor()">Set Font Color</button>
         </div>
 
         <button onclick="downloadImage()">Download Image</button>
 
-        <canvas id="download-canvas" style="display: none;"></canvas> <!-- Add this canvas -->
+        <canvas id="download-canvas" style="display: none;"></canvas>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
@@ -154,13 +212,14 @@
         const textOverlay = document.getElementById('text-overlay');
         const textInput = document.getElementById('text-input');
         const fontColorPicker = document.getElementById('font-color-picker');
-        const downloadCanvas = document.getElementById('download-canvas'); // Get the download canvas
+        const downloadCanvas = document.getElementById('download-canvas');
 
-        let cropper; // Cropper.js instance
-        let fontSize = 16;  // Initial font size (smaller for mobile)
+        let cropper;
+        let fontSize = 16;
         let isDragging = false;
         let offsetX, offsetY;
-        let currentAspectRatio = 35/45; //Default aspect Ratio is 35/45
+        let currentAspectRatio = 35/45;
+        let currentTextColor = 'white'; //Default Text Color
 
         imageUpload.addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -168,27 +227,22 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     uploadedImage.src = e.target.result;
-                    uploadedImage.style.display = 'block'; // Show the image
+                    uploadedImage.style.display = 'block';
 
-                    // Initialize Cropper.js after the image has loaded
                     uploadedImage.onload = function() {
-                        console.log("Image loaded");  // Debugging
+                        console.log("Image loaded");
 
-                        // Destroy existing cropper instance if it exists
                         if (cropper) {
                             cropper.destroy();
                             cropper = null;
                         }
 
                         cropper = new Cropper(uploadedImage, {
-                            aspectRatio: currentAspectRatio, // Initial aspect ratio (35x45 is default)
+                            aspectRatio: currentAspectRatio,
                             viewMode: 1,
-                            autoCropArea: 1, // Make crop box cover the whole image by default
-                            // zoomable: false, //Prevent zoom to ensure actual size
-                            // movable: false,  //Prevent move to ensure actual size
-
+                            autoCropArea: 1,
                         });
-                        console.log("Cropper Initialized"); // Debugging
+                        console.log("Cropper Initialized");
                     };
                 }
                 reader.readAsDataURL(file);
@@ -205,7 +259,7 @@
                 alert("Please upload an image first.");
                 return;
             }
-            console.log("Setting Crop Size:", size); // Debugging
+            console.log("Setting Crop Size:", size);
             if (size === '35x45') {
                 cropper.setAspectRatio(35 / 45);
                 currentAspectRatio = 35 / 45;
@@ -213,7 +267,7 @@
                 cropper.setAspectRatio(45 / 35);
                 currentAspectRatio = 45 / 35;
             } else if (size === 'free') {
-                cropper.setAspectRatio(NaN); // Free crop
+                cropper.setAspectRatio(NaN);
                 currentAspectRatio = NaN;
             }
         }
@@ -225,25 +279,23 @@
             }
 
             const croppedCanvas = cropper.getCroppedCanvas();
-            console.log("Cropped Canvas:", croppedCanvas); // Debugging
+            console.log("Cropped Canvas:", croppedCanvas);
             if (croppedCanvas) {
                 uploadedImage.src = croppedCanvas.toDataURL('image/jpeg');
             }
 
-             //Destroy cropper instance, so you can upload a new image without issues
             cropper.destroy();
             cropper = null;
         }
 
         function resizeImage() {
-            // Implement image resizing logic here (using canvas or other methods)
             alert('Resizing functionality to be implemented.');
         }
 
         function addText() {
             const text = textInput.value;
             textOverlay.textContent = text;
-            textOverlay.style.display = 'block'; // Show the text overlay
+            textOverlay.style.display = 'block';
         }
 
         function increaseFontSize() {
@@ -252,13 +304,25 @@
         }
 
         function decreaseFontSize() {
-            fontSize = Math.max(10, fontSize - 2);  // Prevent font from getting too small
+            fontSize = Math.max(10, fontSize - 2);
             textOverlay.style.fontSize = fontSize + 'px';
         }
 
         function setFontColor() {
             const color = fontColorPicker.value;
+            currentTextColor = color;
             textOverlay.style.color = color;
+        }
+
+        // New function to set color from button
+        function setColor(button) {
+            const color = button.dataset.color;
+            currentTextColor = color;
+            textOverlay.style.color = color;
+
+            //Also update input color
+            fontColorPicker.value = color;
+
         }
 
          // Function to convert mm to pixels (assuming 300 DPI)
@@ -269,7 +333,7 @@
             return (mm / mmPerInch) * pixelsPerInch;
         }
 
-        function downloadImage() {
+       function downloadImage() {
             if (!uploadedImage.src) {
                 alert("Please upload and process an image first.");
                 return;
@@ -291,36 +355,44 @@
                 alert("Warning:  Since free crop is selected, the downloaded image will default to 35mm x 45mm.");
             }
 
+             const downloadWidthPx = mmToPixels(downloadWidthMm);
+             const downloadHeightPx = mmToPixels(downloadHeightMm);
 
-            const downloadWidthPx = mmToPixels(downloadWidthMm);
-            const downloadHeightPx = mmToPixels(downloadHeightMm);
+           // Set the canvas dimensions to a higher resolution (e.g., 1200 DPI)
+            const highResDPI = 1200;
+            const highResWidthPx = (downloadWidthMm / 25.4) * highResDPI;
+            const highResHeightPx = (downloadHeightMm / 25.4) * highResDPI;
 
-            // Set the canvas dimensions
-            downloadCanvas.width = downloadWidthPx;
-            downloadCanvas.height = downloadHeightPx;
+            downloadCanvas.width = highResWidthPx;
+            downloadCanvas.height = highResHeightPx;
 
             const ctx = downloadCanvas.getContext('2d');
 
-            // Draw the cropped image on the download canvas
-            // Ensure image is drawn correctly for the specified dimensions
             const img = new Image();
             img.onload = function() {
-                ctx.drawImage(img, 0, 0, downloadWidthPx, downloadHeightPx);
+                // Draw the image on the download canvas at the higher resolution
+                ctx.drawImage(img, 0, 0, highResWidthPx, highResHeightPx);
 
                 // Draw the text onto the download canvas
                 ctx.font = fontSize + 'px bold sans-serif';
-                ctx.fillStyle = textOverlay.style.color;
+                ctx.fillStyle = currentTextColor;
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'bottom'; // Align text to the bottom
+                ctx.textBaseline = 'bottom';
 
-                // Calculate text position
-                const textX = downloadWidthPx / 2;
-                const textY = downloadHeightPx; // Position at the very bottom
+                const textX = highResWidthPx / 2;
+                const textY = highResHeightPx;
 
                 ctx.fillText(textOverlay.textContent, textX, textY);
 
-                // Create a download link
-                const dataURL = downloadCanvas.toDataURL('image/jpeg');
+                // Resize the canvas to the target dimensions
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = downloadWidthPx;
+                tempCanvas.height = downloadHeightPx;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(downloadCanvas, 0, 0, downloadWidthPx, downloadHeightPx);
+
+                // Create a download link from the resized canvas
+                const dataURL = tempCanvas.toDataURL('image/jpeg', 0.95);  // Set quality to 95%
                 const a = document.createElement('a');
                 a.href = dataURL;
                 a.download = 'passport_photo.jpg';
@@ -329,16 +401,15 @@
                 document.body.removeChild(a);
             };
 
-            img.src = uploadedImage.src;  //Important: Set source *after* onload
-
+            img.src = uploadedImage.src;
         }
 
-        // Make the text overlay movable (MOUSE EVENTS)
+        // Make the text overlay movable
         textOverlay.addEventListener('mousedown', function(e) {
             isDragging = true;
             offsetX = e.clientX - textOverlay.offsetLeft;
             offsetY = e.clientY - textOverlay.offsetTop;
-            textOverlay.style.cursor = 'grabbing'; // Change cursor during drag
+            textOverlay.style.cursor = 'grabbing';
         });
 
         document.addEventListener('mouseup', function() {
@@ -351,7 +422,6 @@
             const x = e.clientX - offsetX;
             const y = e.clientY - offsetY;
 
-            // Keep the text within the *container* bounds, allow below
             const containerRect = imageContainer.getBoundingClientRect();
             const textRect = textOverlay.getBoundingClientRect();
 
@@ -367,12 +437,12 @@
             textOverlay.style.top = boundedY + 'px';
         });
 
-        // Make the text overlay movable (TOUCH EVENTS)
+        // Touch events
         textOverlay.addEventListener('touchstart', function(e) {
             isDragging = true;
             offsetX = e.touches[0].clientX - textOverlay.offsetLeft;
             offsetY = e.touches[0].clientY - textOverlay.offsetTop;
-            textOverlay.style.cursor = 'grabbing'; // Change cursor during drag
+            textOverlay.style.cursor = 'grabbing';
         });
 
         document.addEventListener('touchend', function() {
@@ -382,12 +452,11 @@
 
         document.addEventListener('touchmove', function(e) {
             if (!isDragging) return;
-            e.preventDefault();  // Prevent scrolling while dragging
+            e.preventDefault();
 
             const x = e.touches[0].clientX - offsetX;
             const y = e.touches[0].clientY - offsetY;
 
-            // Keep the text within the *container* bounds, allow below
             const containerRect = imageContainer.getBoundingClientRect();
             const textRect = textOverlay.getBoundingClientRect();
 
