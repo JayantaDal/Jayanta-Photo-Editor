@@ -11,31 +11,30 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            margin: 0; /* Reset body margin */
         }
 
         #container {
-            width: 600px;
+            width: 95%; /* Adjust width for smaller screens */
+            max-width: 600px; /*Maximum width */
             border: 1px solid #ccc;
-            padding: 20px;
-            margin-top: 20px;
+            padding: 10px; /* Reduced padding for smaller screens */
+            margin-top: 10px; /* Reduced margin for smaller screens */
+            box-sizing: border-box; /* Include padding and border in element's total width and height */
         }
 
         #image-container {
             position: relative;
-            /* Remove width/height constraints initially */
-            /* width: 350px;   Initial display size (adjust as needed) */
-            /* height: 450px; */
-            overflow: visible; /* Allow text to overflow below image */
-            margin-bottom: 20px;
-            max-width: 100%; /* Make sure it doesn't exceed container width */
-            height: auto; /*Allow container to grow vertically*/
-
+            overflow: visible;
+            margin-bottom: 10px; /* Reduced margin for smaller screens */
+            width: 100%; /* Take up full width of container */
+            height: auto; /* Adjust height dynamically based on content */
         }
 
         #uploaded-image {
             max-width: 100%;
             max-height: auto;
-            display: none; /* Hidden initially */
+            display: none;
         }
 
         #text-overlay {
@@ -44,23 +43,67 @@
             left: 50%;
             transform: translate(-50%, -50%);
             color: white;
-            font-size: 20px;
+            font-size: 16px;  /* Reduced initial font size */
             font-weight: bold;
-            user-select: none; /* Prevent text selection while dragging */
+            user-select: none;
             cursor: move;
-            display: none; /*Initially hidden*/
+            display: none;
+            white-space: nowrap;  /* Prevent text from wrapping */
         }
 
         .controls {
-            margin-top: 10px;
+            margin-top: 5px; /* Reduced margin for smaller screens */
+            display: flex;  /*Use flex to better handle button layout*/
+            flex-wrap: wrap; /*Allow buttons to wrap on smaller screens*/
+            justify-content: center;
         }
 
         .controls button {
-            margin-right: 10px;
+            margin: 5px;  /* Reduced margin for smaller screens */
+            padding: 5px 10px;
+            font-size: 14px;
         }
 
         #crop-options {
-            margin-top: 10px;
+            margin-top: 5px; /* Reduced margin for smaller screens */
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #crop-options button {
+            margin: 5px;
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+
+        input[type="file"],
+        input[type="text"],
+        input[type="color"] {
+            width: 100%;
+            margin-bottom: 5px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 1.5em;  /*Responsive Heading */
+        }
+
+        /* Media queries for smaller screens */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.2em;
+            }
+
+            .controls button,
+            #crop-options button {
+                font-size: 12px;
+                padding: 3px 6px;
+            }
+
+            #text-overlay {
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -114,7 +157,7 @@
         const downloadCanvas = document.getElementById('download-canvas'); // Get the download canvas
 
         let cropper; // Cropper.js instance
-        let fontSize = 20;  // Initial font size
+        let fontSize = 16;  // Initial font size (smaller for mobile)
         let isDragging = false;
         let offsetX, offsetY;
         let currentAspectRatio = 35/45; //Default aspect Ratio is 35/45
@@ -290,7 +333,7 @@
 
         }
 
-        // Make the text overlay movable
+        // Make the text overlay movable (MOUSE EVENTS)
         textOverlay.addEventListener('mousedown', function(e) {
             isDragging = true;
             offsetX = e.clientX - textOverlay.offsetLeft;
@@ -307,6 +350,42 @@
             if (!isDragging) return;
             const x = e.clientX - offsetX;
             const y = e.clientY - offsetY;
+
+            // Keep the text within the *container* bounds, allow below
+            const containerRect = imageContainer.getBoundingClientRect();
+            const textRect = textOverlay.getBoundingClientRect();
+
+            const minX = containerRect.left - imageContainer.offsetLeft;
+            const maxX = containerRect.right - imageContainer.offsetLeft - textRect.width;
+            const minY = containerRect.top - imageContainer.offsetTop;
+            const maxY = containerRect.bottom - imageContainer.offsetTop + imageContainer.offsetHeight  - textRect.height;
+
+            const boundedX = Math.max(minX, Math.min(x, maxX));
+            const boundedY = Math.max(minY, Math.min(y, maxY));
+
+            textOverlay.style.left = boundedX + 'px';
+            textOverlay.style.top = boundedY + 'px';
+        });
+
+        // Make the text overlay movable (TOUCH EVENTS)
+        textOverlay.addEventListener('touchstart', function(e) {
+            isDragging = true;
+            offsetX = e.touches[0].clientX - textOverlay.offsetLeft;
+            offsetY = e.touches[0].clientY - textOverlay.offsetTop;
+            textOverlay.style.cursor = 'grabbing'; // Change cursor during drag
+        });
+
+        document.addEventListener('touchend', function() {
+            isDragging = false;
+            textOverlay.style.cursor = 'move';
+        });
+
+        document.addEventListener('touchmove', function(e) {
+            if (!isDragging) return;
+            e.preventDefault();  // Prevent scrolling while dragging
+
+            const x = e.touches[0].clientX - offsetX;
+            const y = e.touches[0].clientY - offsetY;
 
             // Keep the text within the *container* bounds, allow below
             const containerRect = imageContainer.getBoundingClientRect();
